@@ -11,18 +11,20 @@ DFSIO_JAR=/usr/hdp/current/hadoop-mapreduce-client/hadoop-mapreduce-client-jobcl
 FILES=10
 FILESIZE=100000
 
-LOGDIR=logs
-DATE=`date +%Y%m%d%H%M%S`
-DFSIO_WRITE_OUTPUT_FILE="./$LOGDIR/dfsio_write_results_$DATE.txt"
-DFSIO_READ_OUTPUT_FILE="./$LOGDIR/dfsio_read_results_$DATE.txt"
+DATE=`date +%Y%m%d`
+TIME=`date +%H%M%S`
+LOGDIR="./logs"
+RESULTDIR="${LOGDIR}/TestDFSIO/${DATE}"
+DFSIO_WRITE_OUTPUT_FILE="${RESULTDIR}/dfsio_write_results_${DATE}${TIME}.txt"
+DFSIO_READ_OUTPUT_FILE="${RESULTDIR}/dfsio_read_results_${DATE}${TIME}.txt"
 
 #------------------------------------------------------------------------------
 # MAIN
 #------------------------------------------------------------------------------
 
 # create log dir
-if [ ! -d "${LOGDIR}" ]; then
-    mkdir -p ./${LOGDIR}
+if [ ! -d "${RESULTDIR}" ]; then
+    mkdir -p ${RESULTDIR}
 fi
 
 # testdfsio clean

@@ -26,6 +26,8 @@ function usage () {
     - 100G
     - 500G
     - 1T
+    - 10T
+    - 100T
 
 EOF
 }
@@ -63,7 +65,7 @@ shift $((OPTIND-1))
 #------------------------------------------------------------------------------
 
 # validate sample size
-if [[ -z $1 ]]; then
+if [[ -z ${1+x} ]]; then
   SIZE="1T"
 elif [[ $1 =~ ^(1G|10G|100G|500G|1T)$ ]]; then
   SIZE=$1
@@ -86,12 +88,14 @@ ROWS+=(
   ["100G"]=1000000000
   ["500G"]=5000000000
   ["1T"]=10000000000
+  ["10T"]=100000000000
+  ["100T"]=1000000000000
 )
 
 DATE=`date +%Y%m%d`
 TIME=`date +%H%M%S`
-LOGDIR="logs"
-RESULTDIR="./${LOGDIR}/TeraSort/${DATE}"
+LOGDIR="./logs"
+RESULTDIR="${LOGDIR}/TeraSort/${DATE}"
 SAMPLE_DATASET="/benchmarks/TeraSort/${DATE}${TIME}/teragen_sample_${SIZE}"
 SORTED_DATASET="/benchmarks/TeraSort/${DATE}${TIME}/terasort_sorted_${SIZE}"
 VALIDATED_DATASET="/benchmarks/TeraSort/${DATE}${TIME}/teravalidate_report_${SIZE}"
@@ -101,8 +105,8 @@ VALIDATED_DATASET="/benchmarks/TeraSort/${DATE}${TIME}/teravalidate_report_${SIZ
 #------------------------------------------------------------------------------
 
 # create log dir
-if [ ! -d "${LOGDIR}" ]; then
-  mkdir -p ./${LOGDIR}
+if [ ! -d "${RESULTDIR}" ]; then
+  mkdir -p ${RESULTDIR}
 fi
 
 # kill running mapreduce jobs

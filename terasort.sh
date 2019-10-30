@@ -65,7 +65,7 @@ shift $((OPTIND-1))
 #------------------------------------------------------------------------------
 
 # validate sample size
-if [[ -z $1 ]]; then
+if [[ -z ${1+x} ]]; then
   SIZE="1T"
 elif [[ $1 =~ ^(1G|10G|100G|500G|1T|10T|100T)$ ]]; then
   SIZE=$1
@@ -94,8 +94,8 @@ ROWS+=(
 
 DATE=`date +%Y%m%d`
 TIME=`date +%H%M%S`
-LOGDIR="logs"
-RESULTDIR="./${LOGDIR}/TeraSort/${DATE}"
+LOGDIR="./logs"
+RESULTDIR="${LOGDIR}/TeraSort/${DATE}"
 SAMPLE_DATASET="/benchmarks/TeraSort/teragen_sample_${SIZE}"
 SORTED_DATASET="/benchmarks/TeraSort/terasort_sorted_${SIZE}"
 VALIDATED_DATASET="/benchmarks/TeraSort/teravalidate_report_${SIZE}"
@@ -105,8 +105,8 @@ VALIDATED_DATASET="/benchmarks/TeraSort/teravalidate_report_${SIZE}"
 #------------------------------------------------------------------------------
 
 # create log dir
-if [ ! -d "${LOGDIR}" ]; then
-    mkdir -p ./${LOGDIR}
+if [ ! -d "${RESULTDIR}" ]; then
+    mkdir -p ${RESULTDIR}
 fi
 
 # verify teragen dataset exists
