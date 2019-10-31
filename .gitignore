@@ -1,0 +1,10 @@
+# OS-specific
+.DS_Store
+
+# Editor swapfiles
+.*.sw?
+*~
+
+# App files
+hadoop-mapreduce.jobsummary.log
+/logs
