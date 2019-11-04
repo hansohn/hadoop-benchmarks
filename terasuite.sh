@@ -34,7 +34,7 @@ EOF
 
 # function: mrkill
 function mrkill () {
-  mapred job -list | grep job_ | awk ' { system("mapred job -kill " $1) } '
+  mapred job -list 2>/dev/null | grep job_ | awk ' { system("mapred job -kill " $1) } '
 }
 
 #------------------------------------------------------------------------------
@@ -116,7 +116,7 @@ if ! hdfs dfs -ls "${TERASORT_PREFIX}" > /dev/null 2>&1; then
   hdfs dfs -mkdir -p ${TERASORT_PREFIX}
 fi
 
-for size in ${SIZES}; do
+for size in "${SIZES[@]}"; do
   # define datasets
   SAMPLE_DATASET="${TERASORT_PREFIX}/${size}_teragen_sample"
   SORTED_DATASET="${TERASORT_PREFIX}/${size}_terasort_sorted"
