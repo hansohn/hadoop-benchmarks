@@ -65,13 +65,13 @@ shift $((OPTIND-1))
 #------------------------------------------------------------------------------
 
 # validate parameters
-declare -A SIZES
+declare -a SIZES
 if [[ -z ${1+x} ]]; then
   SIZES+=("1T")
 else
   for i in $@; do
     if [[ $i =~ ^(1G|10G|100G|500G|1T|10T|100T)$ ]]; then
-      SIZES+=($i)
+      SIZES+=("${i}")
     else
       echo "==> ERROR: Unsupported sample size '${i}' was requested"
       usage;
@@ -100,8 +100,8 @@ ROWS+=(
 DATE=`date +%Y%m%d`
 TIME=`date +%H%M%S`
 LOGDIR="./logs"
-RESULTDIR="${LOGDIR}/TeraSort/${DATE}"
-TERASORT_PREFIX="/benchmarks/TeraSort/${DATE}${TIME}"
+RESULTDIR="${LOGDIR}/TeraSort/${DATE}/${TIME}"
+TERASORT_PREFIX="/benchmarks/TeraSort/${DATE}/${TIME}"
 
 #------------------------------------------------------------------------------
 # MAIN
@@ -110,6 +110,10 @@ TERASORT_PREFIX="/benchmarks/TeraSort/${DATE}${TIME}"
 # create log dir
 if [ ! -d "${RESULTDIR}" ]; then
   mkdir -p ${RESULTDIR}
+fi
+# create terasort_prefix dir
+if ! hdfs dfs -ls "${TERASORT_PREFIX}" > /dev/null 2>&1; then
+  hdfs dfs -mkdir -p ${TERASORT_PREFIX}
 fi
 
 for size in ${SIZES}; do
@@ -122,7 +126,7 @@ for size in ${SIZES}; do
   mrkill
 
   # run teragen
-  echo "==> TeraGen Phase"
+  echo "==> TeraGen Phase ${size}"
   time hadoop jar ${MR_EXAMPLES_JAR} teragen \
     -Dmapreduce.map.log.level=INFO \
     -Dmapreduce.reduce.log.level=INFO \
@@ -143,7 +147,7 @@ for size in ${SIZES}; do
     -Dyarn.app.mapreduce.am.command.opts=-Xmx768m \
     -Dyarn.app.mapreduce.am.resource.mb=1024 \
     -Dmapred.map.tasks=92 \
-    ${ROWS[${size}]} ${SAMPLE_DATASET} >> "${RESULTDIR}/teragen_results_${DATE}${TIME}_${size}.txt" 2>&1
+    ${ROWS[${size}]} ${SAMPLE_DATASET} >> "${RESULTDIR}/${size}_teragen.txt" 2>&1
 
   # verify teragen dataset exists
   if ! hdfs dfs -ls ${SAMPLE_DATASET} > /dev/null 2>&1; then
@@ -155,7 +159,7 @@ for size in ${SIZES}; do
   mrkill
 
   # run terasort
-  echo "==> TeraSort Phase"
+  echo "==> TeraSort Phase ${size}"
   time hadoop jar ${MR_EXAMPLES_JAR} terasort \
     -Dmapreduce.map.log.level=INFO \
     -Dmapreduce.reduce.log.level=INFO \
@@ -177,7 +181,7 @@ for size in ${SIZES}; do
     -Dyarn.app.mapreduce.am.resource.mb=1024 \
     -Dmapred.reduce.tasks=92 \
     -Dmapreduce.terasort.output.replication=1 \
-    ${SAMPLE_DATASET} ${SORTED_DATASET} >> "${RESULTDIR}/terasort_results_${DATE}${TIME}_${size}.txt" 2>&1
+    ${SAMPLE_DATASET} ${SORTED_DATASET} >> "${RESULTDIR}/${size}_terasort.txt" 2>&1
 
   # verify terasort output exists
   if ! hdfs dfs -ls ${SORTED_DATASET} > /dev/null 2>&1; then
@@ -189,7 +193,7 @@ for size in ${SIZES}; do
   mrkill
 
   # run teravalidate
-  echo "==> TeraValidate Phase"
+  echo "==> TeraValidate Phase ${size}"
   time hadoop jar ${MR_EXAMPLES_JAR} teravalidate \
     -Ddfs.blocksize=256M \
     -Dio.file.buffer.size=131072 \
@@ -202,5 +206,5 @@ for size in ${SIZES}; do
     -Dmapreduce.task.io.sort.mb=1 \
     -Dmapred.map.tasks=185 \
     -Dmapred.reduce.tasks=185 \
-    ${SORTED_DATASET} ${VALIDATED_DATASET} >> "${RESULTDIR}/teravalidate_results_${DATE}${TIME}_${size}.txt" 2>&1
+    ${SORTED_DATASET} ${VALIDATED_DATASET} >> "${RESULTDIR}/${size}_teravalidate.txt" 2>&1
 done
