@@ -52,7 +52,9 @@ if [[ -z ${1+x} ]]; then
   exit 0;
 else
   for i in $@; do
-    if [ ! -f $i ]; then
+    if [ -d $1 ]; then
+      :
+    elif [ ! -f $i ]; then
       echo "==> ERROR: '$i' file not found"
       usage;
       exit 1;
@@ -66,21 +68,29 @@ fi
 
 echo "==> TERASORT STATISTICS"
 for i in $@; do
-  # get start time
-  firstline=$(grep -P "[0-9]{2,4}/[0-1]{1}[0-9]{1}/[0-3]{1}[0-9]{1}" $i | head -n 1)
-  starttime=$(awk '{print $1, " ", $2}' <<< "${firstline}")
+  if [ -d $i ]; then
+    files=($(find $i -type f))
+  else
+    files=($i)
+  fi
 
-  # get stop time
-  lastline=$(grep -P "[0-9]{2,4}/[0-1]{1}[0-9]{1}/[0-3]{1}[0-9]{1}" $i | tail -n 1)
-  stoptime=$(awk '{print $1, " ", $2}' <<< "${lastline}")
+  for j in ${files[@]}; do
+    # get start time
+    firstline=$(grep -P "[0-9]{2,4}/[0-1]{1}[0-9]{1}/[0-3]{1}[0-9]{1}" $j | head -n 1)
+    starttime=$(awk '{print $1, " ", $2}' <<< "${firstline}")
 
-  # convert to date format
-  startdate=$(date -u -d "${starttime//\//}" +"%s")
-  stopdate=$(date -u -d "${stoptime//\//}" +"%s")
+    # get stop time
+    lastline=$(grep -P "[0-9]{2,4}/[0-1]{1}[0-9]{1}/[0-3]{1}[0-9]{1}" $j | tail -n 1)
+    stoptime=$(awk '{print $1, " ", $2}' <<< "${lastline}")
 
-  # get delta
-  totaltime=$(date -u -d "0 $stopdate sec - $startdate sec" +"%H:%M:%S")
+    # convert to date format
+    startdate=$(date -u -d "${starttime//\//}" +"%s")
+    stopdate=$(date -u -d "${stoptime//\//}" +"%s")
 
-  # return results
-  echo "==> '$i' took ${totaltime} to complete"
+    # get delta
+    totaltime=$(date -u -d "0 $stopdate sec - $startdate sec" +"%H:%M:%S")
+
+    # return results
+    echo "==> '$j' took ${totaltime} to complete"
+  done
 done

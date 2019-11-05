@@ -12,7 +12,7 @@ $ HADOOP_USER_NAME=hdfs ./benchmarks/TeraSort/terasuite.sh
 $ HADOOP_USER_NAME=hdfs ./benchmarks/TeraSort/terasuite.sh 1G 100G 1T
 
 # gather terasort statistics
-$ HADOOP_USER_NAME=hdfs ./benchmarks/TeraSort/terastats.sh /benchmarks/TeraSort/*
+$ ./benchmarks/TeraSort/terastat.sh ./logs/TeraSort
 ```
 
 ### TestDFSIO
