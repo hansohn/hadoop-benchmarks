@@ -22,6 +22,12 @@ DFSIO_READ="${RESULTDIR}/dfsio_read.txt"
 # MAIN
 #------------------------------------------------------------------------------
 
+# check for dfsio jar
+if [ ! -f ${DFSIO_JAR} ]; then
+  echo "==> ERROR: File not found '${DFSIO_JAR}'"
+  exit 1
+fi
+
 # create log dir
 if [ ! -d "${RESULTDIR}" ]; then
     mkdir -p ${RESULTDIR}

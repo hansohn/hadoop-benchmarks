@@ -107,6 +107,12 @@ TERASORT_PREFIX="/benchmarks/TeraSort"
 # MAIN
 #------------------------------------------------------------------------------
 
+# check for mr jar
+if [ ! -f ${MR_EXAMPLES_JAR} ]; then
+  echo "==> ERROR: File not found '${MR_EXAMPLES_JAR}'"
+  exit 1
+fi
+
 # create log dir
 if [ ! -d "${RESULTDIR}" ]; then
   mkdir -p ${RESULTDIR}
