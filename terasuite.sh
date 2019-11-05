@@ -118,9 +118,9 @@ fi
 
 for size in "${SIZES[@]}"; do
   # define datasets
-  SAMPLE_DATASET="${TERASORT_PREFIX}/${size}_teragen_sample"
-  SORTED_DATASET="${TERASORT_PREFIX}/${size}_terasort_sorted"
-  VALIDATED_DATASET="${TERASORT_PREFIX}/${size}_teravalidate_report"
+  TERAGEN_DATA="${TERASORT_PREFIX}/${size}_teragen"
+  TERASORT_DATA="${TERASORT_PREFIX}/${size}_terasort"
+  TERAVALIDATE_DATA="${TERASORT_PREFIX}/${size}_teravalidate"
 
   # kill running mapreduce jobs
   mrkill
@@ -147,11 +147,11 @@ for size in "${SIZES[@]}"; do
     -Dyarn.app.mapreduce.am.command.opts=-Xmx768m \
     -Dyarn.app.mapreduce.am.resource.mb=1024 \
     -Dmapred.map.tasks=92 \
-    ${ROWS[${size}]} ${SAMPLE_DATASET} >> "${RESULTDIR}/${size}_teragen.txt" 2>&1
+    ${ROWS[${size}]} ${TERAGEN_DATA} >> "${RESULTDIR}/${size}_teragen.txt" 2>&1
 
   # verify teragen dataset exists
-  if ! hdfs dfs -ls ${SAMPLE_DATASET} > /dev/null 2>&1; then
-    echo "==> ERROR: TeraGen dataset directory '${SAMPLE_DATASET}' not found"
+  if ! hdfs dfs -ls ${TERAGEN_DATA} > /dev/null 2>&1; then
+    echo "==> ERROR: TeraGen dataset directory '${TERAGEN_DATA}' not found"
     exit 1;
   fi
 
@@ -181,11 +181,11 @@ for size in "${SIZES[@]}"; do
     -Dyarn.app.mapreduce.am.resource.mb=1024 \
     -Dmapred.reduce.tasks=92 \
     -Dmapreduce.terasort.output.replication=1 \
-    ${SAMPLE_DATASET} ${SORTED_DATASET} >> "${RESULTDIR}/${size}_terasort.txt" 2>&1
+    ${TERAGEN_DATA} ${TERASORT_DATA} >> "${RESULTDIR}/${size}_terasort.txt" 2>&1
 
   # verify terasort output exists
-  if ! hdfs dfs -ls ${SORTED_DATASET} > /dev/null 2>&1; then
-    echo "==> ERROR: TeraSort output directory '${SORTED_DATASET}' not found"
+  if ! hdfs dfs -ls ${TERASORT_DATA} > /dev/null 2>&1; then
+    echo "==> ERROR: TeraSort output directory '${TERASORT_DATA}' not found"
     exit 1;
   fi
 
@@ -206,5 +206,5 @@ for size in "${SIZES[@]}"; do
     -Dmapreduce.task.io.sort.mb=1 \
     -Dmapred.map.tasks=185 \
     -Dmapred.reduce.tasks=185 \
-    ${SORTED_DATASET} ${VALIDATED_DATASET} >> "${RESULTDIR}/${size}_teravalidate.txt" 2>&1
+    ${TERASORT_DATA} ${TERAVALIDATE_DATA} >> "${RESULTDIR}/${size}_teravalidate.txt" 2>&1
 done
