@@ -35,7 +35,7 @@ EOF
 
 # function: mrkill
 function mrkill () {
-  mapred job -list | grep job_ | awk ' { system("mapred job -kill " $1) } '
+  mapred job -list 2>/dev/null | grep job_ | awk ' { system("mapred job -kill " $1) } '
 }
 
 #------------------------------------------------------------------------------
@@ -65,15 +65,20 @@ shift $((OPTIND-1))
 # VALIDATION
 #------------------------------------------------------------------------------
 
-# validate sample size
+# validate parameters
+declare -a SIZES
 if [[ -z ${1+x} ]]; then
-  SIZE="1T"
-elif [[ $1 =~ ^(1G|10G|100G|500G|1T|10T|100T)$ ]]; then
-  SIZE=$1
+  SIZES+=("1T")
 else
-  echo "==> ERROR: An unsupported sample size was requested"
-  usage;
-  exit 1;
+  for i in $@; do
+    if [[ $i =~ ^(1G|10G|100G|500G|1T|10T|100T)$ ]]; then
+      SIZES+=("${i}")
+    else
+      echo "==> ERROR: Unsupported sample size '${i}' was requested"
+      usage;
+      exit 1;
+    fi
+  done
 fi
 
 #------------------------------------------------------------------------------
@@ -96,10 +101,8 @@ ROWS+=(
 DATE=`date +%Y%m%d`
 TIME=`date +%H%M%S`
 LOGDIR="./logs"
-RESULTDIR="${LOGDIR}/TeraSort/${DATE}"
-SAMPLE_DATASET="/benchmarks/TeraSort/teragen_sample_${SIZE}"
-SORTED_DATASET="/benchmarks/TeraSort/terasort_sorted_${SIZE}"
-VALIDATED_DATASET="/benchmarks/TeraSort/teravalidate_report_${SIZE}"
+RESULTDIR="${LOGDIR}/TeraSort/${DATE}/${TIME}"
+TERASORT_PREFIX="/benchmarks/TeraSort"
 
 #------------------------------------------------------------------------------
 # MAIN
@@ -107,35 +110,45 @@ VALIDATED_DATASET="/benchmarks/TeraSort/teravalidate_report_${SIZE}"
 
 # create log dir
 if [ ! -d "${RESULTDIR}" ]; then
-    mkdir -p ${RESULTDIR}
+  mkdir -p ${RESULTDIR}
+fi
+# create terasort_prefix dir
+if ! hdfs dfs -ls "${TERASORT_PREFIX}" > /dev/null 2>&1; then
+  hdfs dfs -mkdir -p ${TERASORT_PREFIX}
 fi
 
-# verify terasort output exists
-if ! hdfs dfs -ls ${SORTED_DATASET} > /dev/null 2>&1; then
-  echo "==> ERROR: TeraSort output directory '${SORTED_DATASET}' not found"
-  exit 1;
-fi
+for size in "${SIZES[@]}"; do
+  # define datasets
+  TERASORT_DATA="${TERASORT_PREFIX}/${size}_terasort"
+  TERAVALIDATE_DATA="${TERASORT_PREFIX}/${size}_teravalidate"
 
-# remove teravalidate report dir
-if hdfs dfs -ls ${VALIDATED_DATASET} > /dev/null 2>&1; then
-  hdfs dfs -rm -r -f ${VALIDATED_DATASET}
-fi
+  # verify terasort output exists
+  if ! hdfs dfs -ls ${TERASORT_DATA} > /dev/null 2>&1; then
+    echo "==> ERROR: TeraSort output directory '${TERASORT_DATA}' not found"
+    exit 1;
+  fi
 
-# kill running mapreduce jobs
-mrkill
+  # remove teravalidate report dir
+  if hdfs dfs -ls ${TERAVALIDATE_DATA} > /dev/null 2>&1; then
+    hdfs dfs -rm -r -f ${TERAVALIDATE_DATA}
+  fi
 
-# run teravalidate
-echo "==> TeraValidate Phase"
-time hadoop jar ${MR_EXAMPLES_JAR} teravalidate \
-  -Ddfs.blocksize=256M \
-  -Dio.file.buffer.size=131072 \
-  -Dmapreduce.map.memory.mb=2048 \
-  -Dmapreduce.map.java.opts=-Xmx1536m \
-  -Dmapreduce.reduce.memory.mb=2048 \
-  -Dmapreduce.reduce.java.opts=-Xmx1536m \
-  -Dyarn.app.mapreduce.am.resource.mb=1024 \
-  -Dyarn.app.mapreduce.am.command-opts=-Xmx768m \
-  -Dmapreduce.task.io.sort.mb=1 \
-  -Dmapred.map.tasks=185 \
-  -Dmapred.reduce.tasks=185 \
-  ${SORTED_DATASET} ${VALIDATED_DATASET} >> "${RESULTDIR}/teravalidate_results_${DATE}${TIME}.txt" 2>&1
+  # kill running mapreduce jobs
+  mrkill
+
+  # run teravalidate
+  echo "==> TeraValidate Phase ${size}"
+  time hadoop jar ${MR_EXAMPLES_JAR} teravalidate \
+    -Ddfs.blocksize=256M \
+    -Dio.file.buffer.size=131072 \
+    -Dmapreduce.map.memory.mb=2048 \
+    -Dmapreduce.map.java.opts=-Xmx1536m \
+    -Dmapreduce.reduce.memory.mb=2048 \
+    -Dmapreduce.reduce.java.opts=-Xmx1536m \
+    -Dyarn.app.mapreduce.am.resource.mb=1024 \
+    -Dyarn.app.mapreduce.am.command-opts=-Xmx768m \
+    -Dmapreduce.task.io.sort.mb=1 \
+    -Dmapred.map.tasks=185 \
+    -Dmapred.reduce.tasks=185 \
+    ${TERASORT_DATA} ${TERAVALIDATE_DATA} >> "${RESULTDIR}/${size}_teravalidate.txt" 2>&1
+done
