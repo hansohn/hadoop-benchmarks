@@ -15,9 +15,9 @@ function usage () {
 
     --help    shows this help menu
 
-  By default this script will generate a 1 TB sample dataset, sort the dataset,
-  and then validate the sort. You can modify the sample size to an alternate 
-  supported size by passing the size value as a arguement to the script. 
+  By default this script will generate a 1 TB sample dataset for terasort. You 
+  can modify the sample size to an alternate supported size by passing the size 
+  value as a arguement to the script. 
 
   The current supported sizes are:
 
@@ -35,6 +35,11 @@ EOF
 # function: mrkill
 function mrkill () {
   mapred job -list 2>/dev/null | grep job_ | awk ' { system("mapred job -kill " $1) } '
+}
+
+# function: upsearch
+function upsearch () {
+    test / == "$PWD" && return || test -e "$1" && echo "$PWD/$1" && return || cd .. && upsearch "$1"
 }
 
 #------------------------------------------------------------------------------
@@ -99,9 +104,9 @@ ROWS+=(
 
 DATE=`date +%Y%m%d`
 TIME=`date +%H%M%S`
-LOGDIR="./logs"
+LOGDIR=$(upsearch "logs")
 RESULTDIR="${LOGDIR}/TeraSort/${DATE}/${TIME}"
-TERASORT_PREFIX="/benchmarks/TeraSort/${DATE}/${TIME}"
+TERASORT_PREFIX="/benchmarks/TeraSort"
 
 #------------------------------------------------------------------------------
 # MAIN
@@ -125,8 +130,11 @@ fi
 for size in "${SIZES[@]}"; do
   # define datasets
   TERAGEN_DATA="${TERASORT_PREFIX}/${size}_teragen"
-  TERASORT_DATA="${TERASORT_PREFIX}/${size}_terasort"
-  TERAVALIDATE_DATA="${TERASORT_PREFIX}/${size}_teravalidate"
+
+  # remove hdfs data dir
+  if hdfs dfs -ls ${TERAGEN_DATA} > /dev/null 2>&1; then
+    hdfs dfs -rm -r -f ${TERAGEN_DATA}
+  fi
 
   # kill running mapreduce jobs
   mrkill
@@ -154,63 +162,4 @@ for size in "${SIZES[@]}"; do
     -Dyarn.app.mapreduce.am.resource.mb=1024 \
     -Dmapred.map.tasks=92 \
     ${ROWS[${size}]} ${TERAGEN_DATA} >> "${RESULTDIR}/${size}_teragen.txt" 2>&1
-
-  # verify teragen dataset exists
-  if ! hdfs dfs -ls ${TERAGEN_DATA} > /dev/null 2>&1; then
-    echo "==> ERROR: TeraGen dataset directory '${TERAGEN_DATA}' not found"
-    exit 1;
-  fi
-
-  # kill running mapreduce jobs
-  mrkill
-
-  # run terasort
-  echo "==> TeraSort Phase ${size}"
-  time hadoop jar ${MR_EXAMPLES_JAR} terasort \
-    -Dmapreduce.map.log.level=INFO \
-    -Dmapreduce.reduce.log.level=INFO \
-    -Dyarn.app.mapreduce.am.log.level=INFO \
-    -Dio.file.buffer.size=131072 \
-    -Dmapreduce.map.cpu.vcores=1 \
-    -Dmapreduce.map.java.opts=-Xmx1536m \
-    -Dmapreduce.map.maxattempts=1 \
-    -Dmapreduce.map.memory.mb=2048 \
-    -Dmapreduce.map.output.compress=true \
-    -Dmapreduce.map.output.compress.codec=org.apache.hadoop.io.compress.Lz4Codec \
-    -Dmapreduce.reduce.cpu.vcores=1 \
-    -Dmapreduce.reduce.java.opts=-Xmx1536m \
-    -Dmapreduce.reduce.maxattempts=1 \
-    -Dmapreduce.reduce.memory.mb=2048 \
-    -Dmapreduce.task.io.sort.factor=300 \
-    -Dmapreduce.task.io.sort.mb=384 \
-    -Dyarn.app.mapreduce.am.command.opts=-Xmx768m \
-    -Dyarn.app.mapreduce.am.resource.mb=1024 \
-    -Dmapred.reduce.tasks=92 \
-    -Dmapreduce.terasort.output.replication=1 \
-    ${TERAGEN_DATA} ${TERASORT_DATA} >> "${RESULTDIR}/${size}_terasort.txt" 2>&1
-
-  # verify terasort output exists
-  if ! hdfs dfs -ls ${TERASORT_DATA} > /dev/null 2>&1; then
-    echo "==> ERROR: TeraSort output directory '${TERASORT_DATA}' not found"
-    exit 1;
-  fi
-
-  # kill running mapreduce jobs
-  mrkill
-
-  # run teravalidate
-  echo "==> TeraValidate Phase ${size}"
-  time hadoop jar ${MR_EXAMPLES_JAR} teravalidate \
-    -Ddfs.blocksize=256M \
-    -Dio.file.buffer.size=131072 \
-    -Dmapreduce.map.memory.mb=2048 \
-    -Dmapreduce.map.java.opts=-Xmx1536m \
-    -Dmapreduce.reduce.memory.mb=2048 \
-    -Dmapreduce.reduce.java.opts=-Xmx1536m \
-    -Dyarn.app.mapreduce.am.resource.mb=1024 \
-    -Dyarn.app.mapreduce.am.command-opts=-Xmx768m \
-    -Dmapreduce.task.io.sort.mb=1 \
-    -Dmapred.map.tasks=185 \
-    -Dmapred.reduce.tasks=185 \
-    ${TERASORT_DATA} ${TERAVALIDATE_DATA} >> "${RESULTDIR}/${size}_teravalidate.txt" 2>&1
 done

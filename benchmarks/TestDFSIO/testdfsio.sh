@@ -4,6 +4,15 @@ set -u
 trap "" HUP
 
 #------------------------------------------------------------------------------
+# FUNCTIONS
+#------------------------------------------------------------------------------
+
+# function: upsearch
+function upsearch () {
+    test / == "$PWD" && return || test -e "$1" && echo "$PWD/$1" && return || cd .. && upsearch "$1"
+}
+
+#------------------------------------------------------------------------------
 # VARIABLES
 #------------------------------------------------------------------------------
 
@@ -13,7 +22,7 @@ FILESIZE=100000
 
 DATE=`date +%Y%m%d`
 TIME=`date +%H%M%S`
-LOGDIR="./logs"
+LOGDIR=$(upsearch "logs")
 RESULTDIR="${LOGDIR}/TestDFSIO/${DATE}/${TIME}"
 DFSIO_WRITE="${RESULTDIR}/dfsio_write.txt"
 DFSIO_READ="${RESULTDIR}/dfsio_read.txt"

@@ -7,4 +7,5 @@
 
 # App files
 hadoop-mapreduce.jobsummary.log
-/logs
+/logs/*
+!/logs/.gitignore
